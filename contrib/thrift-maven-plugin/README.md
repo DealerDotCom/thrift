@@ -11,8 +11,7 @@ a previous incarnation). So here's some!
 Getting Started
 ---------------
 
-First up, install the latest thrift compiler (currently 0.9.3). The version
-definitely matters. On OSX this is:
+First up, install the latest thrift compiler (currently 0.9.3). On OSX this is:
 
         brew update
         brew install thrift
