@@ -11,7 +11,13 @@ a previous incarnation). So here's some!
 Getting Started
 ---------------
 
-First up, configure your plugin like so:
+First up, install the latest thrift compiler (currently 0.9.3). The version
+definitely matters. On OSX this is:
+
+        brew update
+        brew install thrift
+
+Then configure your plugin like so:
 
 
             <plugin>
@@ -55,8 +61,9 @@ dependencies unless I actually need them.
             </exclusions>
         </dependency>
 
-That's it! `mvn clean install` and you should have some shiny new generated
-classes under `target/generated-sources/thrift/`.
+That's it! Put your thrift files in `src/main/thrift`, run `mvn clean install`
+and you should have some shiny new generated classes under
+`target/generated-sources/thrift/`.
 
 Configuration Options
 ---------------------
