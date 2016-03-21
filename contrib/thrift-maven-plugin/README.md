@@ -61,17 +61,17 @@ classes under `target/generated-sources/thrift/`.
 Configuration Options
 ---------------------
 
-TODO: ...
+* TODO: ...
 
 Exporting thrift definitions to a maven repo
 --------------------------------------------
 
-TODO: basic standalone example
-TODO: include maven dependencies for included thrift files in pom that is deployed
+* TODO: basic standalone example
+* TODO: include maven dependencies for included thrift files in pom that is deployed
 
 Importing thrift definitions from a maven repo
 ----------------------------------------------
 
-TODO: example of generating classes for a specific thrift file (excluding others on the classpath)
-TODO: example of generating classes for a local thrift file that depends on others on the classpath
+* TODO: example of generating classes for a specific thrift file (excluding others on the classpath)
+* TODO: example of generating classes for a local thrift file that depends on others on the classpath
 
