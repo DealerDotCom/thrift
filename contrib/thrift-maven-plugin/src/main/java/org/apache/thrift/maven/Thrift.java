@@ -254,7 +254,6 @@ final class Thrift {
          * @throws IllegalStateException If no thrift files have been added.
          */
         public Thrift build() {
-            checkState(!thriftFiles.isEmpty());
             return new Thrift(executable, generator, ImmutableSet.copyOf(thriftPathElements),
                     ImmutableSet.copyOf(thriftFiles), javaOutputDirectory);
         }

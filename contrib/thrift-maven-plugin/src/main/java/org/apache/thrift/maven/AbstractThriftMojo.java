@@ -157,51 +157,70 @@ abstract class AbstractThriftMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkParameters();
         final File thriftSourceRoot = getThriftSourceRoot();
+
+        ImmutableSet<File> derivedThriftPathElements;
+        try {
+            derivedThriftPathElements = makeThriftPathFromJars(temporaryThriftFileDirectory, getDependencyArtifactFiles());
+        } catch (IOException e) {
+            throw new MojoExecutionException("An IO error occurred", e);
+        } catch (IllegalArgumentException e) {
+            throw new MojoFailureException("thrift failed to execute because: " + e.getMessage(), e);
+        }
+
+        ImmutableSet<File> thriftFiles;
         if (thriftSourceRoot.exists()) {
             try {
-                ImmutableSet<File> thriftFiles = findThriftFilesInDirectory(thriftSourceRoot);
-                final File outputDirectory = getOutputDirectory();
-                ImmutableSet<File> outputFiles = findGeneratedFilesInDirectory(getOutputDirectory());
-
-                if (thriftFiles.isEmpty()) {
-                    getLog().info("No thrift files to compile.");
-                } else if (checkStaleness && ((lastModified(thriftFiles) + staleMillis) < lastModified(outputFiles))) {
-                    getLog().info("Skipping compilation because target directory newer than sources.");
-                    attachFiles();
-                } else {
-                    ImmutableSet<File> derivedThriftPathElements =
-                            makeThriftPathFromJars(temporaryThriftFileDirectory, getDependencyArtifactFiles());
-                    outputDirectory.mkdirs();
-
-                    // Quick fix to fix issues with two mvn installs in a row (ie no clean)
-                    // cleanDirectory(outputDirectory);
-
-                    Thrift thrift = new Thrift.Builder(thriftExecutable, outputDirectory)
-                            .setGenerator(generator)
-                            .addThriftPathElement(thriftSourceRoot)
-                            .addThriftPathElements(derivedThriftPathElements)
-                            .addThriftPathElements(asList(additionalThriftPathElements))
-                            .addThriftFiles(thriftFiles)
-                            .build();
-                    final int exitStatus = thrift.compile();
-                    if (exitStatus != 0) {
-                        getLog().error("thrift failed output: " + thrift.getOutput());
-                        getLog().error("thrift failed error: " + thrift.getError());
-                        throw new MojoFailureException(
-                                "thrift did not exit cleanly. Review output for more information.");
-                    }
-                    attachFiles();
-                }
+                thriftFiles = findThriftFilesInDirectory(thriftSourceRoot);
             } catch (IOException e) {
                 throw new MojoExecutionException("An IO error occurred", e);
-            } catch (IllegalArgumentException e) {
-                throw new MojoFailureException("thrift failed to execute because: " + e.getMessage(), e);
-            } catch (CommandLineException e) {
-                throw new MojoExecutionException("An error occurred while invoking thrift.", e);
             }
-        } else {
-            getLog().info(format("%s does not exist. Review the configuration or consider disabling the plugin.",
-                    thriftSourceRoot));
+        }
+        else {
+            thriftFiles = ImmutableSet.of();
+        }
+
+        try {
+            final File outputDirectory = getOutputDirectory();
+            outputDirectory.mkdirs();
+
+            Thrift.Builder b = new Thrift.Builder(thriftExecutable, outputDirectory)
+                .setGenerator(generator);
+
+            if (thriftSourceRoot.exists()) {
+                b.addThriftPathElement(thriftSourceRoot);
+            }
+
+            b.addThriftPathElements(derivedThriftPathElements)
+                .addThriftPathElements(asList(additionalThriftPathElements));
+
+            for (File e : derivedThriftPathElements) {
+                b.addThriftPathElement(e.getParentFile());
+            }
+
+            b.addThriftFiles(thriftFiles);
+
+            for (File f : derivedThriftPathElements) {
+                b.addThriftFiles(findThriftFilesInDirectory(f));
+            }
+
+            Thrift thrift = b.build();
+
+            final int exitStatus = thrift.compile();
+            if (exitStatus != 0) {
+                getLog().error("thrift failed output: " + thrift.getOutput());
+                getLog().error("thrift failed error: " + thrift.getError());
+                throw new MojoFailureException(
+                    "thrift did not exit cleanly. Review output for more information.");
+            }
+
+            attachFiles();
+
+        } catch (IllegalArgumentException e) {
+            throw new MojoFailureException("thrift failed to execute because: " + e.getMessage(), e);
+        } catch (IOException e) {
+            throw new MojoFailureException("io: " + e.getMessage(), e);
+        } catch (CommandLineException e) {
+            throw new MojoExecutionException("An error occurred while invoking thrift.", e);
         }
     }
 
