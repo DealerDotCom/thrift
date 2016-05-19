@@ -35,6 +35,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
@@ -156,7 +157,7 @@ abstract class AbstractThriftMojo extends AbstractMojo {
      */
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkParameters();
-        final File thriftSourceRoot = getThriftSourceRoot();
+        final List<File> thriftSourceRoots = getThriftSourceRoots();
 
         ImmutableSet<File> derivedThriftPathElements;
         try {
@@ -167,17 +168,17 @@ abstract class AbstractThriftMojo extends AbstractMojo {
             throw new MojoFailureException("thrift failed to execute because: " + e.getMessage(), e);
         }
 
-        ImmutableSet<File> thriftFiles;
-        if (thriftSourceRoot.exists()) {
-            try {
-                thriftFiles = findThriftFilesInDirectory(thriftSourceRoot);
-            } catch (IOException e) {
-                throw new MojoExecutionException("An IO error occurred", e);
+        Set<File> thriftFiles = new HashSet();
+        for (File root : thriftSourceRoots) {
+            if (root.exists()) {
+                try {
+                    thriftFiles.addAll(findThriftFilesInDirectory(root));
+                } catch (IOException e) {
+                    throw new MojoExecutionException("An IO error occurred", e);
+                }
             }
         }
-        else {
-            thriftFiles = ImmutableSet.of();
-        }
+        thriftFiles = ImmutableSet.copyOf(thriftFiles);
 
         try {
             final File outputDirectory = getOutputDirectory();
@@ -186,8 +187,10 @@ abstract class AbstractThriftMojo extends AbstractMojo {
             Thrift.Builder b = new Thrift.Builder(thriftExecutable, outputDirectory)
                 .setGenerator(generator);
 
-            if (thriftSourceRoot.exists()) {
-                b.addThriftPathElement(thriftSourceRoot);
+            for (File root : thriftSourceRoots) {
+                if (root.exists()) {
+                    b.addThriftPathElement(root);
+                }
             }
 
             b.addThriftPathElements(derivedThriftPathElements)
@@ -246,9 +249,8 @@ abstract class AbstractThriftMojo extends AbstractMojo {
         checkNotNull(projectHelper, "projectHelper");
         checkNotNull(thriftExecutable, "thriftExecutable");
         checkNotNull(generator, "generator");
-        final File thriftSourceRoot = getThriftSourceRoot();
+        final List<File> thriftSourceRoot = getThriftSourceRoots();
         checkNotNull(thriftSourceRoot);
-        checkArgument(!thriftSourceRoot.isFile(), "thriftSourceRoot is a file, not a diretory");
         checkNotNull(temporaryThriftFileDirectory, "temporaryThriftFileDirectory");
         checkState(!temporaryThriftFileDirectory.isFile(), "temporaryThriftFileDirectory is a file, not a directory");
         final File outputDirectory = getOutputDirectory();
@@ -256,7 +258,7 @@ abstract class AbstractThriftMojo extends AbstractMojo {
         checkState(!outputDirectory.isFile(), "the outputDirectory is a file, not a directory");
     }
 
-    protected abstract File getThriftSourceRoot();
+    protected abstract List<File> getThriftSourceRoots();
 
     protected abstract List<Artifact> getDependencyArtifacts();
 
@@ -332,7 +334,7 @@ abstract class AbstractThriftMojo extends AbstractMojo {
     ImmutableSet<File> findThriftFilesInDirectory(File directory) throws IOException {
         checkNotNull(directory);
         checkArgument(directory.isDirectory(), "%s is not a directory", directory);
-        List<File> thriftFilesInDirectory = getFiles(directory, 
+        List<File> thriftFilesInDirectory = getFiles(directory,
         		Joiner.on(",").join(includes),
         		Joiner.on(",").join(excludes));
         return ImmutableSet.copyOf(thriftFilesInDirectory);

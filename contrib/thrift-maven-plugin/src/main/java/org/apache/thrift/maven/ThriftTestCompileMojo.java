@@ -20,7 +20,11 @@
 package org.apache.thrift.maven;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import com.google.common.collect.ImmutableList;
 
@@ -35,9 +39,15 @@ public final class ThriftTestCompileMojo extends AbstractThriftMojo {
      * The source directories containing the sources to be compiled.
      *
      * @parameter default-value="${basedir}/src/test/thrift"
-     * @required
      */
-    private File thriftTestSourceRoot;
+    private File defaultThriftTestSourceRoot;
+
+    /**
+     * The source directories containing the sources to be compiled.
+     *
+     * @parameter
+     */
+    private List<File> thriftTestSourceRoots;
 
     /**
      * This is the directory into which the {@code .java} will be created.
@@ -48,10 +58,24 @@ public final class ThriftTestCompileMojo extends AbstractThriftMojo {
     private File outputDirectory;
 
     @Override
+    protected List<File> getThriftSourceRoots() {
+        Set<File> roots = new HashSet();
+        if (defaultThriftTestSourceRoot!= null) {
+            roots.add(defaultThriftTestSourceRoot);
+        }
+        if (thriftTestSourceRoots != null) {
+            roots.addAll(thriftTestSourceRoots);
+        }
+        return new ArrayList(roots);
+    }
+
+    @Override
     protected void attachFiles() {
-        project.addTestCompileSourceRoot(outputDirectory.getAbsolutePath());
-        projectHelper.addTestResource(project, thriftTestSourceRoot.getAbsolutePath(),
-        		ImmutableList.of("**/*.thrift"), null);
+        project.addCompileSourceRoot(outputDirectory.getAbsolutePath());
+        for (File root : getThriftSourceRoots()) {
+            projectHelper.addResource(project, root.getAbsolutePath(),
+                ImmutableList.of("**/*.thrift"), null);
+        }
     }
 
     @Override
@@ -65,10 +89,5 @@ public final class ThriftTestCompileMojo extends AbstractThriftMojo {
     @Override
     protected File getOutputDirectory() {
         return outputDirectory;
-    }
-
-    @Override
-    protected File getThriftSourceRoot() {
-        return thriftTestSourceRoot;
     }
 }
